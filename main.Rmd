@@ -5,6 +5,11 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(lattice)
+library(ggplot2)
+library(caret)
+library(parallel)
+library(doParallel)
 ```
 
 Greetings! In this work we are going to work with data from fitness trackers. The final goal is to predict with maximum accuracy type of exercise using accelerometers' data.
@@ -13,20 +18,24 @@ Greetings! In this work we are going to work with data from fitness trackers. Th
 
 Let's load training and testing data:
 ```{r}
-training = read.csv("pml-training.csv")
-testing = read.csv("pml-testing.csv")
+training <- read.csv("pml-training.csv")
+testing <- read.csv("pml-testing.csv")
+dim(training)
+```
+Our training dataset contains 19622 rows and 160 columns. Most of the columns contains a lot NA and empty values.
+
+## Model training
+
+Here we have a classification-based task. For this, I decided to use Random Forest algorithm. I'll use caret implementation although it is slower. The reason is that it allows more convenient cross-validation.
+
+```{r}
+cluster <- makeCluster(detectCores() - 2)
+registerDoParallel(cluster)
+trControl <- trainControl(method = "cv", number = 2, allowParallel = TRUE)
 ```
 
-```{r cars}
-summary(cars)
+```{r}
+training[is.na(training)] <- 0
+model = train(classe ~ ., data=training, method="rf", trControl=trControl, preProcess="pca")
+model
 ```
-
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
