@@ -18,24 +18,66 @@ Greetings! In this work we are going to work with data from fitness trackers. Th
 
 Let's load training and testing data:
 ```{r}
-training <- read.csv("pml-training.csv")
-testing <- read.csv("pml-testing.csv")
+allTraining <- read.csv("pml-training.csv")
+trainIndex <- createDataPartition(allTraining$classe, p=0.7, list=FALSE)
+training <- allTraining[trainIndex,]
+testing <- allTraining[-trainIndex,]
+validation <- read.csv("pml-testing.csv")
 dim(training)
 ```
-Our training dataset contains 19622 rows and 160 columns. Most of the columns contains a lot NA and empty values.
+Our training dataset contains 19622 rows and 160 columns. 
+
+## Data cleaning
+
+Most of the columns contains a lot NAs and empty values. Let's clean it up:
+
+```{r}
+training[training == "#DIV/0!"] <- NA
+training[training == ""] <- NA
+training <- training[, colSums(is.na(training)) / nrow(training) < 0.1]
+```
+
+Here I translated all "#DIV/0!" and empty values to NAs. Then I left all the columns that contained less than 10% of NAs. New training dataset shape:
+
+```{r echo=FALSE}
+dim(training)
+```
+
+This operations significantly decreased a number of covariates down to 60.
 
 ## Model training
 
-Here we have a classification-based task. For this, I decided to use Random Forest algorithm. I'll use caret implementation although it is slower. The reason is that it allows more convenient cross-validation.
-
+Here we have a classification-based task. For this, I decided to use Random Forest algorithm. I'll use caret implementation although it is slower. The reason is that it allows to complete cross-validation more conveniently.
+First I made parallel model computing possible by creating a cluster of all but 2 CPU cores(2 left for OS).
 ```{r}
 cluster <- makeCluster(detectCores() - 2)
 registerDoParallel(cluster)
-trControl <- trainControl(method = "cv", number = 2, allowParallel = TRUE)
 ```
 
+Here I created a train-control object that comprises details about cross-validation. I used 10-fold cross-validation(I tested 3-5-15-fold validation and the best out-of-sample error rates was in 10-fold):
 ```{r}
-training[is.na(training)] <- 0
+trControl <- trainControl(method = "cv", number = 10, allowParallel = TRUE)
+```
+
+Eventually, let's create a model. I decided to use PCA preprocessing because of a lot of predictors whose I suspected some of them to be multicollinear:
+```{r}
+
 model = train(classe ~ ., data=training, method="rf", trControl=trControl, preProcess="pca")
 model
+model$finalModel
+```
+
+Summary looks good. Let's test out-of-sample error rates:
+```{r}
+predicted <- predict(model, testing)
+conf_matrix <- confusionMatrix(predicted, as.factor(testing$classe))
+```
+
+Out-of-sample error rates also are good. Thus we can `publish` out model.
+
+## Conclusions
+
+In this work we loaded the data, created training, test partitions. Then cleaned training dataset from NAs and empty values. After normalization was done, we prepared all for parallel computing and crossvalidation. For classification model I choose Random Forest. Prediction results on testing data:
+```{r echo=FALSE}
+conf_matrix$overall
 ```

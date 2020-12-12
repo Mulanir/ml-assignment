@@ -417,99 +417,83 @@ summary {
 <p>Greetings! In this work we are going to work with data from fitness trackers. The final goal is to predict with maximum accuracy type of exercise using accelerometers’ data.</p>
 <div id="data-lookup" class="section level2">
 <h2>Data lookup</h2>
-<div id="overview" class="section level3">
-<h3>Overview</h3>
 <p>Let’s load training and testing data:</p>
-<pre class="r"><code>training &lt;- read.csv(&quot;pml-training.csv&quot;)
-testing &lt;- read.csv(&quot;pml-testing.csv&quot;)
+<pre class="r"><code>allTraining &lt;- read.csv(&quot;pml-training.csv&quot;)
+trainIndex &lt;- createDataPartition(allTraining$classe, p=0.7, list=FALSE)
+training &lt;- allTraining[trainIndex,]
+testing &lt;- allTraining[-trainIndex,]
+validation &lt;- read.csv(&quot;pml-testing.csv&quot;)
 dim(training)</code></pre>
-<pre><code>## [1] 19622   160</code></pre>
-<p>Our training dataset contains 19622 rows and 160 columns. Most of the columns contains a lot NA and empty values, thus in next sections we will clean them up.</p>
+<pre><code>## [1] 13737   160</code></pre>
+<p>Our training dataset contains 19622 rows and 160 columns.</p>
 </div>
-<div id="cleaning" class="section level3">
-<h3>Cleaning</h3>
-<p>First of all I removed unused columns: name and additional index:</p>
-<pre class="r"><code>training &lt;- training[, 3:160]
-testing &lt;- testing[, 3:160]</code></pre>
-<p>To clean data I decided to use correlation-based features selection to remove highly correlated features.</p>
-<pre class="r"><code>predictors_df = sapply(training[, 1:157], as.numeric)</code></pre>
-<pre><code>## Warning in lapply(X = X, FUN = FUN, ...): NAs introduced by coercion
-
-## Warning in lapply(X = X, FUN = FUN, ...): NAs introduced by coercion
-
-## Warning in lapply(X = X, FUN = FUN, ...): NAs introduced by coercion
-
-## Warning in lapply(X = X, FUN = FUN, ...): NAs introduced by coercion
-
-## Warning in lapply(X = X, FUN = FUN, ...): NAs introduced by coercion
-
-## Warning in lapply(X = X, FUN = FUN, ...): NAs introduced by coercion
-
-## Warning in lapply(X = X, FUN = FUN, ...): NAs introduced by coercion
-
-## Warning in lapply(X = X, FUN = FUN, ...): NAs introduced by coercion
-
-## Warning in lapply(X = X, FUN = FUN, ...): NAs introduced by coercion
-
-## Warning in lapply(X = X, FUN = FUN, ...): NAs introduced by coercion
-
-## Warning in lapply(X = X, FUN = FUN, ...): NAs introduced by coercion
-
-## Warning in lapply(X = X, FUN = FUN, ...): NAs introduced by coercion
-
-## Warning in lapply(X = X, FUN = FUN, ...): NAs introduced by coercion
-
-## Warning in lapply(X = X, FUN = FUN, ...): NAs introduced by coercion
-
-## Warning in lapply(X = X, FUN = FUN, ...): NAs introduced by coercion
-
-## Warning in lapply(X = X, FUN = FUN, ...): NAs introduced by coercion
-
-## Warning in lapply(X = X, FUN = FUN, ...): NAs introduced by coercion
-
-## Warning in lapply(X = X, FUN = FUN, ...): NAs introduced by coercion
-
-## Warning in lapply(X = X, FUN = FUN, ...): NAs introduced by coercion
-
-## Warning in lapply(X = X, FUN = FUN, ...): NAs introduced by coercion
-
-## Warning in lapply(X = X, FUN = FUN, ...): NAs introduced by coercion
-
-## Warning in lapply(X = X, FUN = FUN, ...): NAs introduced by coercion
-
-## Warning in lapply(X = X, FUN = FUN, ...): NAs introduced by coercion
-
-## Warning in lapply(X = X, FUN = FUN, ...): NAs introduced by coercion
-
-## Warning in lapply(X = X, FUN = FUN, ...): NAs introduced by coercion
-
-## Warning in lapply(X = X, FUN = FUN, ...): NAs introduced by coercion
-
-## Warning in lapply(X = X, FUN = FUN, ...): NAs introduced by coercion
-
-## Warning in lapply(X = X, FUN = FUN, ...): NAs introduced by coercion
-
-## Warning in lapply(X = X, FUN = FUN, ...): NAs introduced by coercion
-
-## Warning in lapply(X = X, FUN = FUN, ...): NAs introduced by coercion
-
-## Warning in lapply(X = X, FUN = FUN, ...): NAs introduced by coercion
-
-## Warning in lapply(X = X, FUN = FUN, ...): NAs introduced by coercion
-
-## Warning in lapply(X = X, FUN = FUN, ...): NAs introduced by coercion
-
-## Warning in lapply(X = X, FUN = FUN, ...): NAs introduced by coercion
-
-## Warning in lapply(X = X, FUN = FUN, ...): NAs introduced by coercion</code></pre>
-<pre class="r"><code>predictors_df[is.na(predictors_df)] &lt;- 0
-correlationMatrix &lt;- cor(predictors_df)</code></pre>
-<pre><code>## Warning in cor(predictors_df): the standard deviation is zero</code></pre>
-<pre class="r"><code># trainControl(method = &quot;cv&quot;, number = 5, allowParallel = TRUE)
-# 
-# model = randomForest(classe ~ ., data=training)
-# model</code></pre>
+<div id="data-cleaning" class="section level2">
+<h2>Data cleaning</h2>
+<p>Most of the columns contains a lot NAs and empty values. Let’s clean it up:</p>
+<pre class="r"><code>training[training == &quot;#DIV/0!&quot;] &lt;- NA
+training[training == &quot;&quot;] &lt;- NA
+training &lt;- training[, colSums(is.na(training)) / nrow(training) &lt; 0.1]</code></pre>
+<p>Here I translated all “#DIV/0!” and empty values to NAs. Then I left all the columns that contained less than 10% of NAs. New training dataset shape:</p>
+<pre><code>## [1] 13737    60</code></pre>
+<p>This operations significantly decreased a number of covariates down to 60.</p>
 </div>
+<div id="model-training" class="section level2">
+<h2>Model training</h2>
+<p>Here we have a classification-based task. For this, I decided to use Random Forest algorithm. I’ll use caret implementation although it is slower. The reason is that it allows to complete cross-validation more conveniently. First I made parallel model computing possible by creating a cluster of all but 2 CPU cores(2 left for OS).</p>
+<pre class="r"><code>cluster &lt;- makeCluster(detectCores() - 2)
+registerDoParallel(cluster)</code></pre>
+<p>Here I created a train-control object that comprises details about cross-validation. I used 10-fold cross-validation(I tested 3-5-15-fold validation and the best out-of-sample error rates was in 10-fold):</p>
+<pre class="r"><code>trControl &lt;- trainControl(method = &quot;cv&quot;, number = 10, allowParallel = TRUE)</code></pre>
+<p>Eventually, let’s create a model. I decided to use PCA preprocessing because of a lot of predictors whose I suspected some of them to be multicollinear:</p>
+<pre class="r"><code>model = train(classe ~ ., data=training, method=&quot;rf&quot;, trControl=trControl, preProcess=&quot;pca&quot;)
+model</code></pre>
+<pre><code>## Random Forest 
+## 
+## 13737 samples
+##    59 predictor
+##     5 classes: &#39;A&#39;, &#39;B&#39;, &#39;C&#39;, &#39;D&#39;, &#39;E&#39; 
+## 
+## Pre-processing: principal component signal extraction (81), centered
+##  (81), scaled (81) 
+## Resampling: Cross-Validated (10 fold) 
+## Summary of sample sizes: 12363, 12365, 12364, 12362, 12362, 12362, ... 
+## Resampling results across tuning parameters:
+## 
+##   mtry  Accuracy   Kappa    
+##    2    0.9858770  0.9821381
+##   41    0.9768525  0.9707217
+##   81    0.9756147  0.9691563
+## 
+## Accuracy was used to select the optimal model using the largest value.
+## The final value used for the model was mtry = 2.</code></pre>
+<pre class="r"><code>model$finalModel</code></pre>
+<pre><code>## 
+## Call:
+##  randomForest(x = x, y = y, mtry = param$mtry) 
+##                Type of random forest: classification
+##                      Number of trees: 500
+## No. of variables tried at each split: 2
+## 
+##         OOB estimate of  error rate: 1.28%
+## Confusion matrix:
+##      A    B    C    D    E class.error
+## A 3879   13   13    0    1 0.006912442
+## B   20 2616   22    0    0 0.015801354
+## C    0   21 2366    9    0 0.012520868
+## D    0    0   54 2190    8 0.027531083
+## E    0    0    1   14 2510 0.005940594</code></pre>
+<p>Summary looks good. Let’s test out-of-sample error rates:</p>
+<pre class="r"><code>predicted &lt;- predict(model, testing)
+conf_matrix &lt;- confusionMatrix(predicted, as.factor(testing$classe))</code></pre>
+<p>Out-of-sample error rates also are good. Thus we can <code>publish</code> out model.</p>
+</div>
+<div id="conclusions" class="section level2">
+<h2>Conclusions</h2>
+<p>In this work we loaded the data, created training, test partitions. Then cleaned training dataset from NAs and empty values. After normalization was done, we prepared all for parallel computing and crossvalidation. For classification model I choose Random Forest. Prediction results on testing data:</p>
+<pre><code>##       Accuracy          Kappa  AccuracyLower  AccuracyUpper   AccuracyNull 
+##      0.9841971      0.9800100      0.9806749      0.9872266      0.2844520 
+## AccuracyPValue  McnemarPValue 
+##      0.0000000            NaN</code></pre>
 </div>
 
 
