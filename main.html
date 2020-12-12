@@ -456,13 +456,13 @@ model</code></pre>
 ## Pre-processing: principal component signal extraction (81), centered
 ##  (81), scaled (81) 
 ## Resampling: Cross-Validated (10 fold) 
-## Summary of sample sizes: 12363, 12365, 12364, 12362, 12362, 12362, ... 
+## Summary of sample sizes: 12363, 12363, 12363, 12363, 12362, 12362, ... 
 ## Resampling results across tuning parameters:
 ## 
 ##   mtry  Accuracy   Kappa    
-##    2    0.9858770  0.9821381
-##   41    0.9768525  0.9707217
-##   81    0.9756147  0.9691563
+##    2    0.9838401  0.9795588
+##   41    0.9749584  0.9683258
+##   81    0.9748131  0.9681444
 ## 
 ## Accuracy was used to select the optimal model using the largest value.
 ## The final value used for the model was mtry = 2.</code></pre>
@@ -474,24 +474,57 @@ model</code></pre>
 ##                      Number of trees: 500
 ## No. of variables tried at each split: 2
 ## 
-##         OOB estimate of  error rate: 1.28%
+##         OOB estimate of  error rate: 1.39%
 ## Confusion matrix:
 ##      A    B    C    D    E class.error
-## A 3879   13   13    0    1 0.006912442
-## B   20 2616   22    0    0 0.015801354
-## C    0   21 2366    9    0 0.012520868
-## D    0    0   54 2190    8 0.027531083
-## E    0    0    1   14 2510 0.005940594</code></pre>
+## A 3886   13    7    0    0 0.005120328
+## B   29 2605   24    0    0 0.019939804
+## C    0   24 2359   13    0 0.015442404
+## D    0    0   51 2193    8 0.026198934
+## E    0    0    0   22 2503 0.008712871</code></pre>
 <p>Summary looks good. Let’s test out-of-sample error rates:</p>
 <pre class="r"><code>predicted &lt;- predict(model, testing)
-conf_matrix &lt;- confusionMatrix(predicted, as.factor(testing$classe))</code></pre>
+conf_matrix &lt;- confusionMatrix(predicted, as.factor(testing$classe))
+conf_matrix</code></pre>
+<pre><code>## Confusion Matrix and Statistics
+## 
+##           Reference
+## Prediction    A    B    C    D    E
+##          A 1664   15    0    0    0
+##          B    4 1113    9    0    0
+##          C    5   11 1017   22    0
+##          D    0    0    0  940    5
+##          E    1    0    0    2 1077
+## 
+## Overall Statistics
+##                                           
+##                Accuracy : 0.9874          
+##                  95% CI : (0.9842, 0.9901)
+##     No Information Rate : 0.2845          
+##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16       
+##                                           
+##                   Kappa : 0.9841          
+##                                           
+##  Mcnemar&#39;s Test P-Value : NA              
+## 
+## Statistics by Class:
+## 
+##                      Class: A Class: B Class: C Class: D Class: E
+## Sensitivity            0.9940   0.9772   0.9912   0.9751   0.9954
+## Specificity            0.9964   0.9973   0.9922   0.9990   0.9994
+## Pos Pred Value         0.9911   0.9885   0.9640   0.9947   0.9972
+## Neg Pred Value         0.9976   0.9945   0.9981   0.9951   0.9990
+## Prevalence             0.2845   0.1935   0.1743   0.1638   0.1839
+## Detection Rate         0.2828   0.1891   0.1728   0.1597   0.1830
+## Detection Prevalence   0.2853   0.1913   0.1793   0.1606   0.1835
+## Balanced Accuracy      0.9952   0.9872   0.9917   0.9870   0.9974</code></pre>
 <p>Out-of-sample error rates also are good. Thus we can <code>publish</code> out model.</p>
 </div>
 <div id="conclusions" class="section level2">
 <h2>Conclusions</h2>
 <p>In this work we loaded the data, created training, test partitions. Then cleaned training dataset from NAs and empty values. After normalization was done, we prepared all for parallel computing and crossvalidation. For classification model I choose Random Forest. Prediction results on testing data:</p>
 <pre><code>##       Accuracy          Kappa  AccuracyLower  AccuracyUpper   AccuracyNull 
-##      0.9841971      0.9800100      0.9806749      0.9872266      0.2844520 
+##      0.9874257      0.9840935      0.9842395      0.9901139      0.2844520 
 ## AccuracyPValue  McnemarPValue 
 ##      0.0000000            NaN</code></pre>
 </div>

@@ -71,6 +71,7 @@ Summary looks good. Let's test out-of-sample error rates:
 ```{r}
 predicted <- predict(model, testing)
 conf_matrix <- confusionMatrix(predicted, as.factor(testing$classe))
+conf_matrix
 ```
 
 Out-of-sample error rates also are good. Thus we can `publish` out model.
